@@ -6,7 +6,7 @@ import { Truck, Calculator, MapPin } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useReadContract, useWriteContract } from 'wagmi';
+import { useReadContract, useWriteContract, useAccount } from 'wagmi';
 import { CONTRACTS, ORACLE_ABI, ESCROW_ABI, ERC20_ABI } from '@/lib/contracts';
 import toast from 'react-hot-toast';
 
@@ -25,6 +25,8 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   const [step, setStep] = useState<'calculate' | 'confirm' | 'processing'>('calculate');
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [distanceMethod, setDistanceMethod] = useState<string>('');
+
+  const { address } = useAccount();
 
   const { data: freightQuote } = useReadContract({
     address: CONTRACTS.ORACLE as `0x${string}`,
@@ -154,7 +156,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
   };
 
   const handleCommit = async () => {
-    if (!batch) return;
+    if (!batch || !address) return;
 
     setStep('processing');
 
@@ -174,7 +176,7 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
       });
 
       // Then lock funds in escrow
-      setTimeout(() => {
+      setTimeout(async () => {
         writeContract({
           address: CONTRACTS.ESCROW as `0x${string}`,
           abi: ESCROW_ABI,
@@ -190,6 +192,24 @@ export function CommitModal({ isOpen, onClose, batch }: CommitModalProps) {
             total,
           ],
         });
+
+        try {
+          await fetch('/api/deal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              batchId: batch.id,
+              buyerAddress: address,
+              transporterAddress: '0x2345678901234567890123456789012345678901',
+              farmerAmount: farmerAmount.toString(),
+              freightAmount: freightCost.toString(),
+              platformFee: platformFee.toString(),
+              totalLocked: total.toString(),
+            }),
+          });
+        } catch (err) {
+          console.error('Failed to store deal:', err);
+        }
 
         toast.success('Deal committed successfully!');
         onClose();
