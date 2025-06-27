@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+interface Context {
+  params: {
+    dealId: string;
+  };
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { dealId: string } }
+  context: Context,
 ) {
+  const { params } = context;
   try {
     const { escrowTxHash } = await request.json();
     const { dealId } = params;
