@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { dealId: string } },
+  { params }: { params: { dealId: string } }
 ) {
   try {
     const { escrowTxHash } = await request.json();
